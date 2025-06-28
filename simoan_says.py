@@ -11,11 +11,11 @@ time.sleep(2)
 ser.write(b"MODE SIMON\n")
 time.sleep(0.2)
 
-sound_files = ["DO.wav", "RE.wav", "MI.wav", "FA.wav"]
+sound_files = ["sounds/DO.wav", "sounds/RE.wav", "sounds/MI.wav", "sounds/FA.wav"]
 pygame.mixer.init()
 sounds = [pygame.mixer.Sound(f) for f in sound_files]
-error_snd = pygame.mixer.Sound("error.wav")
-win_snd = pygame.mixer.Sound("win.wav")
+error_snd = pygame.mixer.Sound("sounds/error.wav")
+win_snd = pygame.mixer.Sound("sounds/win.wav")
 
 # --- GUI ראשי ---
 root = tk.Tk()
