@@ -70,6 +70,9 @@ class SnakeGame:
         if self.restart_button:
             self.restart_button.destroy()
             self.restart_button = None
+        if hasattr(self, 'back_button') and self.back_button:
+            self.back_button.destroy()
+            self.back_button = None
         if self.after_id:
             self.root.after_cancel(self.after_id)
             self.after_id = None
@@ -117,6 +120,10 @@ class SnakeGame:
         with open("highscore.txt", "r") as f:
             return int(f.read().strip())
 
+    def back_to_menu(self):
+        self.root.destroy()
+
+
     def update(self):
         if not self.game_active:
             if not self.restart_button:
@@ -141,10 +148,13 @@ class SnakeGame:
             self.game_active = False
             if self.restart_button:
                 self.restart_button.destroy()
-            self.restart_button = tk.Button(self.root, text="RESTART", font=('Arial', 14), command=self.restart_game)
+            self.restart_button = tk.Button(self.root, text="🔁 Restart", font=('Arial', 14), command=self.restart_game)
             self.canvas.create_window(GRID_WIDTH * GRID_SIZE // 2, GRID_HEIGHT * GRID_SIZE // 2 + 20,
                                       window=self.restart_button)
-
+            self.back_button = tk.Button(self.root, text="⬅ Back to Robofriend", font=('Arial', 12),
+                                         command=self.back_to_menu)
+            self.canvas.create_window(GRID_WIDTH * GRID_SIZE // 2, GRID_HEIGHT * GRID_SIZE // 2 + 60,
+                                      window=self.back_button)
             self.after_id = self.root.after(100, self.update)
             return
 

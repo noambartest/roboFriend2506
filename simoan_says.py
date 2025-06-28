@@ -17,7 +17,7 @@ sounds = [pygame.mixer.Sound(f) for f in sound_files]
 error_snd = pygame.mixer.Sound("sounds/error.wav")
 win_snd = pygame.mixer.Sound("sounds/win.wav")
 
-# --- GUI ראשי ---
+
 root = tk.Tk()
 root.title("🎵 Simon Says ")
 root.geometry("500x320")
@@ -29,14 +29,29 @@ frame_game = tk.Frame(root, bg="#1e1e2f")
 status_label = tk.Label(frame_game, text="", font=("Segoe UI", 18), fg="white", bg="#1e1e2f")
 status_label.pack(pady=30)
 
+
+def back_to_menu():
+    root.destroy()
+
+
+
 restart_button = tk.Button(
     frame_game, text="🔁 Restart", font=("Segoe UI", 14, "bold"),
     bg="#4a90e2", fg="white", activebackground="#357ABD", relief="flat", padx=20, pady=10,
     command=lambda: show_intro()
 )
-restart_button.pack(pady=10)
-restart_button.pack_forget()
 
+back_button = tk.Button(
+    frame_game, text="⬅ Back to Robofriend", font=("Segoe UI", 12, "bold"),
+    bg="#6c757d", fg="white", activebackground="#5a6268", relief="flat", padx=15, pady=8,
+    command=back_to_menu
+)
+
+
+restart_button.pack(pady=(10, 5))
+back_button.pack(pady=(0, 20))
+restart_button.pack_forget()
+back_button.pack_forget()
 
 def send_play_command(idx):
     ser.write(f"PLAY {idx}\n".encode())
@@ -80,7 +95,7 @@ def set_status_animated(text, color="white"):
             root.after(50, animate)
     animate()
 
-# --- לוגיקת משחק ---
+
 def start_game(rounds):
     frame_intro.pack_forget()
     frame_game.pack()
@@ -93,6 +108,7 @@ def start_game(rounds):
             #time.sleep(win_snd.get_length())
             set_status_animated(" You won the game!🎉", "#00ff99")
             restart_button.pack()
+            back_button.pack()
             return
         set_status_animated(f" ROUND {round_num}  📣", "#4dd0e1")
         root.after(950, lambda: continue_round(round_num))
@@ -110,6 +126,7 @@ def start_game(rounds):
                 error_snd.play()
                 time.sleep(error_snd.get_length())
                 restart_button.pack()
+                back_button.pack()
             else:
                 set_status_animated("Success! let's continue ✅ ", "#00ff99")
                 root.after(1500, lambda: game_loop(round_num + 1))
@@ -118,7 +135,7 @@ def start_game(rounds):
 
     game_loop(1)
 
-# --- מסך פתיחה ---
+
 def show_intro():
     frame_game.pack_forget()
     frame_intro.pack()
