@@ -29,6 +29,10 @@ def launch_snake():
     time.sleep(1)
     subprocess.Popen([sys.executable, "snake.py"])
 
+def launch_rps():
+    subprocess.Popen([sys.executable, "RPS_game.py"])
+
+
 def main():
     root = tb.Window(themename="flatly")
     root.title("ROBOFRIEND")
@@ -38,6 +42,7 @@ def main():
     tb.Label(root, text="ROBOFRIEND", font=("Segoe UI", 22, "bold")).pack(pady=(30, 20))
     tb.Button(root, text="🎵 Simon Says", bootstyle=PRIMARY, width=25, command=launch_simon).pack(pady=10)
     tb.Button(root, text="🐍 Snake", bootstyle=SUCCESS, width=25, command=launch_snake).pack(pady=10)
+    tb.Button(root, text="✊ Rock–Paper–Scissors", bootstyle=INFO, width=25, command=launch_rps).pack(pady=10)
 
     root.mainloop()
 
