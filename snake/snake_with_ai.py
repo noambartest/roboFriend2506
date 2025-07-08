@@ -31,7 +31,7 @@ DIRECTIONS = {
 REVERSE_DIR = {v: k for k, v in DIRECTIONS.items()}
 
 model = DQN(input_dim=13, output_dim=4)
-model.load_state_dict(torch.load("../dqn_snake.pth", map_location=torch.device('cpu')))
+model.load_state_dict(torch.load("dqn_snake.pth", map_location=torch.device('cpu')))
 model.eval()
 
 
