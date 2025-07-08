@@ -12,10 +12,10 @@ from dqn_model import DQN
 
 
 
-ser = serial.Serial('COM5', 9600)
-time.sleep(2)
-ser.write(b"MODE SNAKE\n")
-time.sleep(0.2)
+#ser = serial.Serial('COM5', 9600)
+#time.sleep(2)
+#ser.write(b"MODE SNAKE\n")
+#time.sleep(0.2)
 
 GRID_SIZE = 20
 GRID_WIDTH = 20
@@ -31,19 +31,26 @@ DIRECTIONS = {
 REVERSE_DIR = {v: k for k, v in DIRECTIONS.items()}
 
 model = DQN(input_dim=13, output_dim=4)
-model.load_state_dict(torch.load("dqn_snake.pth", map_location=torch.device('cpu')))
+model.load_state_dict(torch.load("snake/dqn_snake.pth", map_location=torch.device('cpu')))
 model.eval()
 
 
 class SnakeGame:
-    def __init__(self, root):
+    def __init__(self, root, use_ai=False):
         self.root = root
+        self.use_ai = use_ai
+
+        self.ser = serial.Serial('COM5', 9600)
+        time.sleep(2)
+        self.ser.write(b"MODE SNAKE\n")
+        time.sleep(0.2)
+
         self.canvas = tk.Canvas(root, width=GRID_WIDTH * GRID_SIZE, height=GRID_HEIGHT * GRID_SIZE, bg='black')
         self.canvas.pack()
         self.restart_button = None
         self.high_score = self.load_high_score()
 
-        self.use_ai = True
+        #self.use_ai = False
 
         self.joystick_pressed = False
         self.joystick_restart_allowed = True
@@ -65,6 +72,7 @@ class SnakeGame:
 
     def setup_game(self):
         self.snake = [(5, 5)]
+        self.walls = []
         self.food = self.spawn_food()
         self.direction = 'RIGHT'
         self.score = 0
@@ -73,7 +81,7 @@ class SnakeGame:
         self.canvas.delete("all")
         self.game_active = True
 
-        self.walls = []
+
         self.progress_counter = 0
         self.last_upgrade = None
         self.bonus_food = None
@@ -186,6 +194,8 @@ class SnakeGame:
             return int(f.read().strip())
 
     def back_to_menu(self):
+        if self.ser and self.ser.is_open:
+            self.ser.close()
         self.root.destroy()
 
 
@@ -292,18 +302,18 @@ class SnakeGame:
     def spawn_food(self):
         while True:
             pos = (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
-            if pos not in self.snake:
+            if pos not in self.snake and pos not in self.walls:
                 return pos
 
     def read_joystick(self):
         while True:
             try:
-                line = ser.readline().decode().strip()
+                line = self.ser.readline().decode().strip()
                 x_str, y_str, pressed_str = line.split(',')
                 x, y = int(x_str), int(y_str)
                 pressed = (pressed_str == "1")
 
-                if self.game_active:
+                if self.game_active and not self.use_ai:
                     if not self.direction_changed:
                         if x < 512 - self.deadzone and not self.is_opposite_direction(self.direction, 'LEFT'):
                             self.direction = 'LEFT'
@@ -323,8 +333,19 @@ class SnakeGame:
                 continue
 
     def restart_game(self):
+        self.canvas.destroy()  # מחק קנבס קיים
+        self.canvas = tk.Canvas(self.root, width=GRID_WIDTH * GRID_SIZE, height=GRID_HEIGHT * GRID_SIZE, bg='black')
+        self.canvas.pack()
+
+        if self.restart_button:
+            self.restart_button.destroy()
+            self.restart_button = None
+        if hasattr(self, 'back_button') and self.back_button:
+            self.back_button.destroy()
+            self.back_button = None
+
         self.setup_game()
-        #self.update()
+        self.update()
 
     def add_wall(self):
         while True:
@@ -346,7 +367,37 @@ class SnakeGame:
                 self.bonus_timer = 50
                 break
 
-root = tk.Tk()
-root.title("Arduino Snake Game")
-game = SnakeGame(root)
-root.mainloop()
+def show_start_menu():
+    menu = tk.Tk()
+    menu.title("Choose Game Mode")
+
+    def choose_ai():
+        menu.destroy()
+        start_game(True)
+
+    def choose_joystick():
+        menu.destroy()
+        start_game(False)
+
+    frame = tk.Frame(menu, padx=50, pady=40, bg='black')
+    frame.pack()
+
+    label = tk.Label(frame, text="Choose Mode", font=('Arial', 20), bg='black', fg='white')
+    label.pack(pady=(0, 20))
+
+    joystick_btn = tk.Button(frame, text="🎮 Play with Joystick", font=('Arial', 14), command=choose_joystick, bg='#4682B4', fg='white', padx=10, pady=5)
+    joystick_btn.pack(pady=10)
+
+    ai_btn = tk.Button(frame, text="🤖 Let the AI Play for You", font=('Arial', 14), command=choose_ai, bg='#32CD32', fg='white', padx=10, pady=5)
+    ai_btn.pack(pady=10)
+
+    menu.mainloop()
+
+def start_game(use_ai_mode):
+    root = tk.Tk()
+    root.title("Arduino Snake Game")
+    game = SnakeGame(root, use_ai=use_ai_mode)
+    root.mainloop()
+
+
+show_start_menu()

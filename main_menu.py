@@ -27,7 +27,7 @@ def launch_simon():
 def launch_snake():
     send_mode_to_arduino("SNAKE")
     time.sleep(1)
-    subprocess.Popen([sys.executable, "snake/snake.py"])
+    subprocess.Popen([sys.executable, "snake/snake_with_ai.py"])
 
 def launch_rps():
     subprocess.Popen([sys.executable, "RPS_game.py"])
