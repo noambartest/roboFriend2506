@@ -12,7 +12,7 @@ import numpy as np
 import mediapipe as mp
 
 # ─────────────── settings ───────────────
-SAVE_DIR = "data/rock"   # ← change for paper / scissors
+SAVE_DIR = "../data/rock"  # ← change for paper / scissors
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 hands = mp.solutions.hands.Hands(

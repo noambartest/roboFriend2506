@@ -30,7 +30,7 @@ def launch_snake():
     subprocess.Popen([sys.executable, "snake/snake_with_ai.py"])
 
 def launch_rps():
-    subprocess.Popen([sys.executable, "RPS_game.py"])
+    subprocess.Popen([sys.executable, "Rock-Paper-Scissors/RPS_game.py"])
 
 
 def main():

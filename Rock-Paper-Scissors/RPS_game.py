@@ -291,7 +291,7 @@ def play_game(best_of: int, root: tb.Window) -> None:
         
         
 # ------------------------------------------------------------
-#  GUI launcher  –  החלון שבוחר מספר סיבובים ומפעיל את המשחק
+#  GUI launcher
 # ------------------------------------------------------------
 def build_launcher() -> tb.Window:
     root = tb.Window(themename="flatly")
@@ -299,21 +299,21 @@ def build_launcher() -> tb.Window:
     root.geometry("+600+300")
     root.resizable(False, False)
 
-    # ---- לוגו קטן (אופציונלי) ----
+
     try:
         import tkinter as tk
         logo = tk.PhotoImage(file=str(ICON_DIR / "rock.png")).subsample(3, 3)
         tb.Label(root, image=logo).pack(pady=6)
-        root.logo = logo          # חשוב לשמור reference כדי שלא יזרק-GC
+        root.logo = logo
     except Exception:
         pass
 
-    # ---- כותרת וסליידר ----
+
     tb.Label(root,
              text="Choose number of rounds",
              font=("Segoe UI", 13, "bold")).pack(pady=(5, 2))
 
-    # זוכר את הבחירה האחרונה (אם קיים config.json)
+
     last = 3
     if CFG_FILE.exists():
         try:
@@ -334,7 +334,7 @@ def build_launcher() -> tb.Window:
              textvariable=rounds_var,
              font=("Segoe UI", 10, "bold")).pack(pady=(0, 6))
 
-    # ---- חלונית עזרה ----
+
     def help_box() -> None:
         msg.showinfo(
             "How to play",
@@ -346,7 +346,7 @@ def build_launcher() -> tb.Window:
 
     tb.Button(root, text="?", width=3, command=help_box).place(x=5, y=5)
 
-    # ---- הפעלת המשחק ----
+
     def start(*_):
         # שומר את ההעדפה
         CFG_FILE.write_text(json.dumps({"rounds": rounds_var.get()}))
@@ -359,13 +359,13 @@ def build_launcher() -> tb.Window:
               width=18,
               command=start).pack(pady=(2, 8))
 
-    # ---- יציאה נקייה ----
+
     tb.Button(root,
               text="Exit",
               bootstyle=SECONDARY,
               command=root.destroy).pack(pady=(0, 10))
 
-    # מאפשר Enter = Start
+
     root.bind("<Return>", start)
 
     return root
