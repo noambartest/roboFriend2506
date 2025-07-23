@@ -22,7 +22,7 @@ def send_mode_to_arduino(mode):
 def launch_simon():
     send_mode_to_arduino("SIMON")
     time.sleep(1)
-    subprocess.Popen([sys.executable, "simon_says.py"])
+    subprocess.Popen([sys.executable, "simon/simon_says.py"])
 
 def launch_snake():
     send_mode_to_arduino("SNAKE")
