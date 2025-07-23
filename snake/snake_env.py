@@ -72,7 +72,7 @@ class SnakeEnv:
         dx = food_x - head_x
         dy = food_y - head_y
 
-        # בונוס
+
         if self.bonus_active and self.bonus_food:
             bonus_x, bonus_y = self.bonus_food
             bdx = bonus_x - head_x

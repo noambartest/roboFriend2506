@@ -8,7 +8,7 @@ from replay_buffer import ReplayBuffer
 import random
 import os
 
-# 🎯 היפר-פרמטרים
+
 EPISODES = 1000
 GAMMA = 0.99
 BATCH_SIZE = 64
@@ -19,7 +19,6 @@ EPS_DECAY = 0.995
 
 env = SnakeEnv()
 state_dim = 13
-  # תואם ל-get_state במשחק
 action_dim = 4  # ['UP', 'DOWN', 'LEFT', 'RIGHT']
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -32,7 +31,6 @@ memory = ReplayBuffer()
 start_episode = 0
 epsilon = EPS_START
 
-# טענת checkpoint אם קיים
 if os.path.exists("../checkpoint.pth"):
     checkpoint = torch.load("../checkpoint.pth")
     policy_net.load_state_dict(checkpoint['model_state_dict'])
@@ -93,7 +91,6 @@ for episode in range(start_episode, EPISODES):
     epsilon = max(EPS_END, epsilon * EPS_DECAY)
     print(f"Episode {episode}: Reward {total_reward:.2f}, Epsilon {epsilon:.3f}")
 
-    # שמירת checkpoint בסוף כל אפיזודה
     torch.save({
         'model_state_dict': policy_net.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
@@ -101,5 +98,5 @@ for episode in range(start_episode, EPISODES):
         'episode': episode
     }, "../checkpoint.pth")
 
-# שמירת המודל הסופי
+
 torch.save(policy_net.state_dict(), "../dqn_snake.pth")

@@ -8,19 +8,12 @@ import torch
 import numpy as np
 from dqn_model import DQN
 
-
-
-
-
-#ser = serial.Serial('COM5', 9600)
-#time.sleep(2)
-#ser.write(b"MODE SNAKE\n")
-#time.sleep(0.2)
-
+# Game grid parameters
 GRID_SIZE = 20
 GRID_WIDTH = 20
 GRID_HEIGHT = 20
 
+# Mapping directions to grid offsets
 DIRECTIONS = {
     'UP': (0, -1),
     'DOWN': (0, 1),
@@ -28,18 +21,23 @@ DIRECTIONS = {
     'RIGHT': (1, 0),
 }
 
+# Reverse mapping (unused, but kept if needed for future)
 REVERSE_DIR = {v: k for k, v in DIRECTIONS.items()}
 
+# Load pre-trained model (DQN)
 model = DQN(input_dim=13, output_dim=4)
 model.load_state_dict(torch.load("snake/dqn_snake.pth", map_location=torch.device('cpu')))
 model.eval()
 
-
 class SnakeGame:
+    """
+    Main class for the Snake game logic, integrating AI (DQN), Arduino joystick, and GUI.
+    """
     def __init__(self, root, use_ai=False):
         self.root = root
         self.use_ai = use_ai
 
+        # Serial communication setup with Arduino
         self.ser = serial.Serial('COM5', 9600)
         time.sleep(2)
         self.ser.write(b"MODE SNAKE\n")
@@ -50,19 +48,18 @@ class SnakeGame:
         self.restart_button = None
         self.high_score = self.load_high_score()
 
-        #self.use_ai = False
-
         self.joystick_pressed = False
         self.joystick_restart_allowed = True
         self.after_id = None
         self.direction_changed = False
-        self.deadzone = 100
+        self.deadzone = 100  # Joystick sensitivity
         self.game_active = True
 
         self.pulse_radius = 0
         self.pulse_direction = 1
         self.just_ate = False
 
+        # Start joystick reading thread
         self.read_joystick_thread = threading.Thread(target=self.read_joystick)
         self.read_joystick_thread.daemon = True
         self.read_joystick_thread.start()
@@ -71,16 +68,18 @@ class SnakeGame:
         self.update()
 
     def setup_game(self):
+        """
+        Initialize or reset the game state.
+        """
         self.snake = [(5, 5)]
         self.walls = []
         self.food = self.spawn_food()
         self.direction = 'RIGHT'
         self.score = 0
-        self.speed = 175
+        self.speed = 175  # ms between moves
         self.direction_changed = False
         self.canvas.delete("all")
         self.game_active = True
-
 
         self.progress_counter = 0
         self.last_upgrade = None
@@ -102,12 +101,18 @@ class SnakeGame:
             self.after_id = None
 
     def get_state(self):
+        """
+        Compute the current state for AI input (13 features).
+        Returns:
+            torch.Tensor: 1x13 state vector.
+        """
         head_x, head_y = self.snake[0]
         food_x, food_y = self.food
 
         dx = food_x - head_x
         dy = food_y - head_y
 
+        # Bonus food info if active
         if self.bonus_active and self.bonus_food:
             bonus_x, bonus_y = self.bonus_food
             bdx = bonus_x - head_x
@@ -118,12 +123,11 @@ class SnakeGame:
             bonus_left = 0
             bonus_up = 0
 
+        # Danger in each direction (walls, self, out-of-bounds)
         danger_left = ((head_x - 1, head_y) in self.snake or head_x - 1 < 0 or (head_x - 1, head_y) in self.walls)
-        danger_right = ((head_x + 1, head_y) in self.snake or head_x + 1 >= GRID_WIDTH or (
-        head_x + 1, head_y) in self.walls)
+        danger_right = ((head_x + 1, head_y) in self.snake or head_x + 1 >= GRID_WIDTH or (head_x + 1, head_y) in self.walls)
         danger_up = ((head_x, head_y - 1) in self.snake or head_y - 1 < 0 or (head_x, head_y - 1) in self.walls)
-        danger_down = ((head_x, head_y + 1) in self.snake or head_y + 1 >= GRID_HEIGHT or (
-        head_x, head_y + 1) in self.walls)
+        danger_down = ((head_x, head_y + 1) in self.snake or head_y + 1 >= GRID_HEIGHT or (head_x, head_y + 1) in self.walls)
 
         state = np.array([
             int(danger_left),
@@ -144,13 +148,20 @@ class SnakeGame:
         return torch.tensor(state, dtype=torch.float32).unsqueeze(0)
 
     def get_ai_direction(self):
+        """
+        Use the DQN model to decide the next move (action) for the snake.
+        Returns:
+            str: Chosen direction ('UP', 'DOWN', 'LEFT', 'RIGHT').
+        """
         state = self.get_state()
         with torch.no_grad():
             action = model(state).argmax().item()
-
         return ['UP', 'DOWN', 'LEFT', 'RIGHT'][action]
 
     def draw(self):
+        """
+        Draw the snake, food, walls, bonus food, and score on the canvas.
+        """
         self.canvas.delete("all")
         for i, (x, y) in enumerate(self.snake):
             color = "green"
@@ -161,31 +172,41 @@ class SnakeGame:
             self.canvas.create_rectangle(x * GRID_SIZE, y * GRID_SIZE,
                                          (x + 1) * GRID_SIZE, (y + 1) * GRID_SIZE, fill=color)
 
+        # Draw food with pulsing effect
         fx, fy = self.food
         pulse = self.pulse_radius
         self.canvas.create_oval(fx * GRID_SIZE - pulse, fy * GRID_SIZE - pulse,
                                 (fx + 1) * GRID_SIZE + pulse, (fy + 1) * GRID_SIZE + pulse,
                                 fill='red')
 
+        # Draw walls
         for x, y in self.walls:
             self.canvas.create_rectangle(x * GRID_SIZE, y * GRID_SIZE,
                                          (x + 1) * GRID_SIZE, (y + 1) * GRID_SIZE, fill='gray')
 
+        # Draw bonus food if active
         if self.bonus_active and self.bonus_food:
             bx, by = self.bonus_food
             self.canvas.create_oval(bx * GRID_SIZE, by * GRID_SIZE,
                                     (bx + 1) * GRID_SIZE, (by + 1) * GRID_SIZE, fill='blue')
 
+        # Draw score
         self.canvas.create_text(10, 10, anchor="nw", fill="white", text=f"Score: {self.score}")
         self.canvas.create_text(10, 30, anchor="nw", fill="yellow", text=f"High Score: {self.high_score}")
 
     def is_opposite_direction(self, current, new):
+        """
+        Check if the new direction is directly opposite to the current direction.
+        """
         return (current == 'UP' and new == 'DOWN') or \
                (current == 'DOWN' and new == 'UP') or \
                (current == 'LEFT' and new == 'RIGHT') or \
                (current == 'RIGHT' and new == 'LEFT')
 
     def load_high_score(self):
+        """
+        Load the high score from file (persistent between games).
+        """
         if not os.path.exists("highscore.txt"):
             with open("highscore.txt", "w") as f:
                 f.write("0")
@@ -194,12 +215,18 @@ class SnakeGame:
             return int(f.read().strip())
 
     def back_to_menu(self):
+        """
+        Close serial communication and destroy window (back to main menu).
+        """
         if self.ser and self.ser.is_open:
             self.ser.close()
         self.root.destroy()
 
-
     def update(self):
+        """
+        Main game loop – called by Tkinter timer.
+        Handles movement, AI, collisions, drawing, score, bonuses, and game over.
+        """
         if not self.game_active:
             if not self.restart_button:
                 self.canvas.create_text(GRID_WIDTH * GRID_SIZE // 2, GRID_HEIGHT * GRID_SIZE // 2 - 20,
@@ -208,22 +235,23 @@ class SnakeGame:
                                                 command=self.restart_game)
                 self.canvas.create_window(GRID_WIDTH * GRID_SIZE // 2, GRID_HEIGHT * GRID_SIZE // 2 + 20,
                                           window=self.restart_button)
-
+            # Joystick restart
             if self.joystick_pressed and self.joystick_restart_allowed:
                 self.joystick_restart_allowed = False
                 self.restart_game()
-
             if not self.joystick_pressed:
                 self.joystick_restart_allowed = True
 
             self.after_id = self.root.after(100, self.update)
             return
 
+        # AI mode: choose next move
         if self.use_ai:
             ai_dir = self.get_ai_direction()
             if not self.is_opposite_direction(self.direction, ai_dir):
                 self.direction = ai_dir
 
+        # Check for collision
         if self.snake_has_collided():
             self.game_active = False
             if self.restart_button:
@@ -238,11 +266,13 @@ class SnakeGame:
             self.after_id = self.root.after(100, self.update)
             return
 
+        # Advance snake
         head = self.snake[0]
         dx, dy = DIRECTIONS[self.direction]
         new_head = (head[0] + dx, head[1] + dy)
         self.snake = [new_head] + self.snake
 
+        # Check for food
         if new_head == self.food:
             self.score += 1
             self.food = self.spawn_food()
@@ -252,9 +282,10 @@ class SnakeGame:
                 with open("highscore.txt", "w") as f:
                     f.write(str(self.high_score))
 
+            # Add wall every 2 points
             if self.score % 2 == 0:
                 self.add_wall()
-
+            # Speed up every 4 points
             if self.score % 4 == 0:
                 if self.speed > 50:
                     self.speed -= 5
@@ -263,6 +294,7 @@ class SnakeGame:
             self.snake.pop()
             self.just_ate = False
 
+        # Bonus food logic
         if self.bonus_active and self.bonus_food:
             if self.snake[0] == self.bonus_food:
                 self.score += 5
@@ -279,9 +311,11 @@ class SnakeGame:
                     self.bonus_active = False
                     self.bonus_food = None
         else:
+            # 1/150 chance per frame to spawn bonus food
             if random.randint(1, 150) == 1:
                 self.spawn_bonus_food()
 
+        # Animate food "pulse"
         self.pulse_radius += self.pulse_direction
         if self.pulse_radius >= 3 or self.pulse_radius <= 0:
             self.pulse_direction *= -1
@@ -291,21 +325,31 @@ class SnakeGame:
         self.after_id = self.root.after(self.speed, self.update)
 
     def snake_has_collided(self):
+        """
+        Return True if the snake head hits its body, a wall, or the edge.
+        """
         head = self.snake[0]
         return (
-                head in self.snake[1:] or
-                head in self.walls or
-                head[0] < 0 or head[0] >= GRID_WIDTH or
-                head[1] < 0 or head[1] >= GRID_HEIGHT
+            head in self.snake[1:] or
+            head in self.walls or
+            head[0] < 0 or head[0] >= GRID_WIDTH or
+            head[1] < 0 or head[1] >= GRID_HEIGHT
         )
 
     def spawn_food(self):
+        """
+        Randomly place food, avoiding the snake and walls.
+        """
         while True:
             pos = (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
             if pos not in self.snake and pos not in self.walls:
                 return pos
 
     def read_joystick(self):
+        """
+        Continuously read joystick input from Arduino.
+        Updates direction and detects button presses.
+        """
         while True:
             try:
                 line = self.ser.readline().decode().strip()
@@ -333,7 +377,10 @@ class SnakeGame:
                 continue
 
     def restart_game(self):
-        self.canvas.destroy()  # מחק קנבס קיים
+        """
+        Reset game and re-create GUI widgets (canvas, buttons).
+        """
+        self.canvas.destroy()
         self.canvas = tk.Canvas(self.root, width=GRID_WIDTH * GRID_SIZE, height=GRID_HEIGHT * GRID_SIZE, bg='black')
         self.canvas.pack()
 
@@ -348,6 +395,9 @@ class SnakeGame:
         self.update()
 
     def add_wall(self):
+        """
+        Add a wall at a random location not occupied by the snake or food.
+        """
         while True:
             x = random.randint(1, GRID_WIDTH - 2)
             y = random.randint(1, GRID_HEIGHT - 2)
@@ -357,6 +407,9 @@ class SnakeGame:
                 break
 
     def spawn_bonus_food(self):
+        """
+        Place bonus food at a random location.
+        """
         while True:
             x = random.randint(0, GRID_WIDTH - 1)
             y = random.randint(0, GRID_HEIGHT - 1)
@@ -364,10 +417,13 @@ class SnakeGame:
             if pos not in self.snake and pos != self.food and pos not in self.walls:
                 self.bonus_food = pos
                 self.bonus_active = True
-                self.bonus_timer = 50
+                self.bonus_timer = 50  # Frames to remain
                 break
 
 def show_start_menu():
+    """
+    Display a start menu for choosing between AI mode and joystick mode.
+    """
     menu = tk.Tk()
     menu.title("Choose Game Mode")
 
@@ -385,19 +441,24 @@ def show_start_menu():
     label = tk.Label(frame, text="Choose Mode", font=('Arial', 20), bg='black', fg='white')
     label.pack(pady=(0, 20))
 
-    joystick_btn = tk.Button(frame, text="🎮 Play with Joystick", font=('Arial', 14), command=choose_joystick, bg='#4682B4', fg='white', padx=10, pady=5)
+    joystick_btn = tk.Button(frame, text="🎮 Play with Joystick", font=('Arial', 14), command=choose_joystick,
+                             bg='#4682B4', fg='white', padx=10, pady=5)
     joystick_btn.pack(pady=10)
 
-    ai_btn = tk.Button(frame, text="🤖 Let the AI Play for You", font=('Arial', 14), command=choose_ai, bg='#32CD32', fg='white', padx=10, pady=5)
+    ai_btn = tk.Button(frame, text="🤖 Let the AI Play for You", font=('Arial', 14), command=choose_ai,
+                       bg='#32CD32', fg='white', padx=10, pady=5)
     ai_btn.pack(pady=10)
 
     menu.mainloop()
 
 def start_game(use_ai_mode):
+    """
+    Start the game window in selected mode (AI or joystick).
+    """
     root = tk.Tk()
     root.title("Arduino Snake Game")
     game = SnakeGame(root, use_ai=use_ai_mode)
     root.mainloop()
 
-
-show_start_menu()
+if __name__ == "__main__":
+    show_start_menu()
