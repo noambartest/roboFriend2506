@@ -17,6 +17,7 @@ import pickle
 # ==== Global Variables ====
 collected_data = []   # Stores game examples for training
 USE_AI = True         # AI mode flag
+DATA_PATH = "simon/simon_data.pkl"
 
 # ==== AI Model Definition ====
 class SimonAI_MLP(torch.nn.Module):
@@ -357,9 +358,16 @@ def start_game(rounds):
             music_info_label.config(text=f"🎼 Final Composition saved! Style: {melody_ai.current_scale.title()}")
             restart_button.pack()
             back_button.pack(pady=8)
-            with open("simon_data.pkl", "wb") as f:
-                pickle.dump(collected_data, f)
-            print(f"✅ Saved {len(collected_data)} examples to simon_data.pkl")
+            os.makedirs("simon", exist_ok=True)
+            if os.path.exists(DATA_PATH):
+                with open(DATA_PATH, "rb") as f:
+                    previous_data = pickle.load(f)
+            else:
+                previous_data = []
+            all_data = previous_data + collected_data
+            with open(DATA_PATH, "wb") as f:
+                pickle.dump(all_data, f)
+            print(f"✅ Saved {len(collected_data)} new examples (total: {len(all_data)}) to {DATA_PATH}")
             return
 
         set_status_animated(f"♪ MUSICAL ROUND {round_num} ♪", "#4dd0e1")
